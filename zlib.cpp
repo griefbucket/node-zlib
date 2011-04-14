@@ -33,8 +33,8 @@ Handle<Value> InflateBuffer(const Arguments &args) {
 	const size_t CHUNK = 4096;
 	unsigned char out[CHUNK];
 
-	size_t outBufLen = 1024, outBufUsed = 0;
-	unsigned char *outBuf = new unsigned char[1024];
+	size_t outBufLen = CHUNK, outBufUsed = 0;
+	unsigned char *outBuf = new unsigned char[CHUNK];
 
 	strm.avail_in = BufferLength(args[0]->ToObject());
 	strm.next_in = (unsigned char*) BufferData(args[0]->ToObject());
@@ -54,11 +54,10 @@ Handle<Value> InflateBuffer(const Arguments &args) {
 		if (have + outBufUsed > outBufLen) {
 			outBufLen *= 2;
 
-			unsigned char *newBuf = new unsigned char[1024];
+			unsigned char *newBuf = new unsigned char[outBufLen];
 			memcpy(newBuf, outBuf, outBufUsed);
 
 			delete[] outBuf;
-
 			outBuf = newBuf;
 		}
 
