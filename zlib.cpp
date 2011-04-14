@@ -5,10 +5,12 @@
 #include <string.h>
 #include <iostream>
 
+#include "buffer_compat.h"
+
 using namespace v8;
 using namespace node;
 
-Handle<Value> inflate(const Arguments &args) {
+Handle<Value> InflateBuffer(const Arguments &args) {
 	if (args.Length() != 1) {
 		return ThrowException(Exception::TypeError(String::New("zlib.inflate expects 1 argument")));
 	}
@@ -24,33 +26,49 @@ Handle<Value> inflate(const Arguments &args) {
 		return ThrowException(String::New("inflateInit failed"));		
 	}
 
-	const size_t CHUNK = 1024 * 1024 * 5;
-	unsigned char *out = new unsigned char[CHUNK];
+	const size_t CHUNK = 4096;
+	unsigned char out[CHUNK];
 
-	Buffer *buf = ObjectWrap::Unwrap<Buffer>(args[0]->ToObject());
+	size_t outBufLen = 1024, outBufUsed = 0;
+	unsigned char *outBuf = new unsigned char[1024];
 
-	strm.avail_in = buf->length();
-	strm.next_in = (unsigned char*) buf->data();
+	strm.avail_in = BufferLength(args[0]->ToObject());
+	strm.next_in = (unsigned char*) BufferData(args[0]->ToObject());
 
-	strm.avail_out = CHUNK;
-	strm.next_out = out;
+	do {
+		strm.avail_out = CHUNK;
+		strm.next_out = out;
 
-	if (Z_STREAM_END != inflate(&strm, Z_NO_FLUSH)) {
-		inflateEnd(&strm);
-		delete[] out;
-		return ThrowException(String::New("inflate failed"));
+		if (Z_STREAM_END != inflate(&strm, Z_NO_FLUSH)) {
+			inflateEnd(&strm);
+			delete[] outBuf;
+			return ThrowException(String::New("inflate failed"));
+		}
+
+		size_t have = CHUNK - strm.avail_out;
+
+		if (have + outBufUsed > outBufLen) {
+			outBufLen *= 2;
+
+			unsigned char *newBuf = new unsigned char[1024];
+			memcpy(newBuf, outBuf, outBufUsed);
+
+			delete[] outBuf;
+
+			outBuf = newBuf;
+		}
+
+		memcpy(outBuf + outBufUsed, out, have);
+		outBufUsed += have;
 	}
-
-	size_t have = CHUNK - strm.avail_out;
-	Buffer *outBuffer = Buffer::New(have);
-	memcpy(outBuffer->data(), out, have);
+	while (strm.avail_out == 0);
 
 	inflateEnd(&strm);
-	delete[] out;
-	return outBuffer->handle_;
+
+	return Buffer::New((char*)outBuf, outBufUsed)->handle_;
 }
 
-Handle<Value> deflate(const Arguments &args) {
+Handle<Value> DeflateBuffer(const Arguments &args) {
 	return Undefined();
 }
 
@@ -58,9 +76,9 @@ extern "C" void init(Handle<Object> target) {
 	HandleScope scope;
 	Local<FunctionTemplate> t;
 	
-	t = FunctionTemplate::New(&inflate);
-	target->Set(String::NewSymbol("inflate"), t->GetFunction());
+	t = FunctionTemplate::New(&InflateBuffer);
+	target->Set(String::NewSymbol("inflateBuffer"), t->GetFunction());
 
-	t = FunctionTemplate::New(&deflate);
-	target->Set(String::NewSymbol("deflate"), t->GetFunction());
+	t = FunctionTemplate::New(&DeflateBuffer);
+	target->Set(String::NewSymbol("deflateBuffer"), t->GetFunction());
 }
