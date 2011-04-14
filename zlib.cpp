@@ -12,7 +12,11 @@ using namespace node;
 
 Handle<Value> InflateBuffer(const Arguments &args) {
 	if (args.Length() != 1) {
-		return ThrowException(Exception::TypeError(String::New("zlib.inflate expects 1 argument")));
+		return ThrowException(Exception::TypeError(String::New("zlib.inflateBuffer expects 1 argument")));
+	}
+
+	if (!Buffer::HasInstance(args[0])) {
+		return ThrowException(Exception::TypeError(String::New("zlib.inflateBuffer expects a Buffer")));
 	}
 
 	z_stream strm;
