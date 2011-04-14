@@ -117,7 +117,7 @@ Handle<Value> DeflateBuffer(const Arguments &args) {
 		strm.avail_out = CHUNK;
 		strm.next_out = out;
 
-		if (Z_STREAM_END != inflate(&strm, Z_NO_FLUSH)) {
+		if (Z_STREAM_END != deflate(&strm, Z_FINISH)) {
 			deflateEnd(&strm);
 			delete[] outBuf;
 			return ThrowException(String::New("deflate failed"));
