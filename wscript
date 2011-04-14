@@ -16,5 +16,5 @@ def configure(conf):
 def build(bld):
 	t = bld.new_task_gen('cxx', 'shlib', 'node_addon')
 	t.target = 'zlib'
-	t.source = ['zlib.cpp', 'buffer_compat.cpp']
+	t.source = ['src/zlib.cpp', 'src/buffer_compat.cpp']
 	t.uselib = 'Z'
